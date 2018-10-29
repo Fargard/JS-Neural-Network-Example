@@ -1,6 +1,6 @@
 body {
   background-color: #ffcc00;
-  padding: 20px;
+  padding: 20px 10%;
   margin: 0;
 }
 
@@ -44,6 +44,10 @@ ul.header {
 
   li {
     margin-bottom: 10px;
+  }
+
+  img {
+    max-width: 100%;
   }
 }
 

@@ -2,16 +2,11 @@ import React from "react";
 
 const Home = () => (
   <div>
-    <h2>HELLO</h2>
+    <h2>Привет всем!</h2>
     <p>
-      Cras facilisis urna ornare ex volutpat, et convallis erat elementum. Ut
-      aliquam, ipsum vitae gravida suscipit, metus dui bibendum est, eget
-      rhoncus nibh metus nec massa. Maecenas hendrerit laoreet augue nec
-      molestie. Cum sociis natoque penatibus et magnis dis parturient montes,
-      nascetur ridiculus mus.
+      Этот проект посвящен изучению нейронных сетей на JS с помощью библиотеки brain.js
     </p>
-
-    <p>Duis a turpis sed lacus dapibus elementum sed eu lectus.</p>
+    <p>Сдесь вы найдете общее описание нейронных ситей и базовые примеры по их использованию.</p>
   </div>
 );
 
