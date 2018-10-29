@@ -2,7 +2,13 @@ import React from "react";
 import { BrowserRouter, Switch, Route } from "react-router-dom";
 
 //import views
-import { AppView, Home, NotFound, Theory } from "./containers/";
+import {
+  AppView,
+  Home,
+  NotFound,
+  Theory,
+  ExampleWithTeacher
+} from "./containers/";
 
 export const links = [
   {
@@ -14,6 +20,11 @@ export const links = [
     path: "/theory",
     name: "Theory",
     component: Theory
+  },
+  {
+    path: "/exaple-with-teacher",
+    name: "Example-with-teacher",
+    component: ExampleWithTeacher
   }
 ];
 
