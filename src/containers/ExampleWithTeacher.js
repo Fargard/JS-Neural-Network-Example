@@ -1,89 +1,178 @@
 import React, { Component } from "react";
 import brain from "brain.js";
+import basicTrainData from "../resources/basicTrainData/exampleWithTeacher.json";
 
 class ExampleWithTeacher extends Component {
-  componentDidMount() {
-    this.updateCanvas();
-
-    const clearB = this.refs.clear;
-    const trainB = this.refs.train;
-    const vectorB = this.refs.vector;
-
-    let vectorRes = [];
-    let net = null;
-    let train_data = [];
-
-    clearB.addEventListener("click", e => {
-      this.clear();
-    });
-
-    trainB.addEventListener("click", e => {
-      vectorRes = this.calculate(true);
-
-      //train
-      if (window.confirm("Positive?")) {
-        train_data.push({
-          input: vectorRes,
-          output: { positive: 1 }
-        });
-      } else {
-        train_data.push({
-          input: vectorRes,
-          output: { negative: 1 }
-        });
+  constructor(props) {
+    super(props);
+    this.state = {
+      trainData: [],
+      training: false,
+      result: {
+        negative: 0,
+        positive: 0
+      },
+      neuralConfig: {
+        binaryThresh: 0.5,
+        activation: "sigmoid",
+        hiddenLayers: [5],
+        learningRate: 0.3
       }
-    });
+    };
 
-    vectorB.addEventListener("click", e => {
-      net = new brain.NeuralNetwork();
-      net.train(train_data, { log: true });
+    this.neuralNetwork = new brain.NeuralNetwork(this.state.neuralConfig);
 
-      const result = brain.likely(this.calculate(), net);
-      alert(result);
-    });
+    this.handleTrain = this.handleTrain.bind(this);
+    this.handleLoopTrain = this.handleLoopTrain.bind(this);
+    this.handleChoise = this.handleChoise.bind(this);
+    this.handleChange = this.handleChange.bind(this);
+    this.handleSelect = this.handleSelect.bind(this);
   }
 
-  updateCanvas() {
-    const canv = this.refs.canv;
-    const ctx = canv.getContext("2d");
-    const pixel = 20;
+  componentWillMount() {
+    const localTrainData = localStorage.getItem("trainData");
+    if (localTrainData && localTrainData.length > 0) {
+      this.setState({ trainData: JSON.parse(localTrainData) });
+    } else {
+      localStorage.setItem("trainData", JSON.stringify(basicTrainData));
+      this.setState({ trainData: basicTrainData });
+    }
+
+    const savedNeuralNetwork = localStorage.getItem("neuralNetwork");
+    if (savedNeuralNetwork && savedNeuralNetwork.length > 0) {
+      this.neuralNetwork.fromJSON(JSON.parse(savedNeuralNetwork));
+    }
+  }
+
+  componentDidMount() {
+    this.state.trainData.length && this.handleTrain();
+
+    const canvas = this.refs.canvas;
+    const clear = this.refs.clear;
+    const train = this.refs.train;
+    const vector = this.refs.vector;
+    const ctx = canvas.getContext("2d");
+
+    const pixel = 10;
+    canvas.width = 500;
+    canvas.height = 500;
 
     let is_mouse_down = false;
 
-    canv.width = 500;
-    canv.height = 500;
-
-    canv.addEventListener("mousedown", function(e) {
+    canvas.addEventListener("mousedown", event => {
       is_mouse_down = true;
       ctx.beginPath();
     });
 
-    canv.addEventListener("mouseup", function(e) {
+    canvas.addEventListener("mouseup", event => {
       is_mouse_down = false;
     });
 
-    canv.addEventListener("mousemove", function(e) {
+    canvas.addEventListener("mousemove", event => {
       if (is_mouse_down) {
         ctx.fillStyle = "red";
         ctx.strokeStyle = "red";
         ctx.lineWidth = pixel;
 
-        ctx.lineTo(e.offsetX, e.offsetY);
+        ctx.lineTo(event.offsetX, event.offsetY);
         ctx.stroke();
 
         ctx.beginPath();
-        ctx.arc(e.offsetX, e.offsetY, pixel / 2, 0, Math.PI * 2);
+        ctx.arc(event.offsetX, event.offsetY, pixel / 2, 0, Math.PI * 2);
         ctx.fill();
 
         ctx.beginPath();
-        ctx.moveTo(e.offsetX, e.offsetY);
+        ctx.moveTo(event.offsetX, event.offsetY);
       }
+    });
+
+    clear.addEventListener("click", () => {
+      this.clear();
+    });
+
+    train.addEventListener("click", () => {
+      this.setState({ training: !this.state.training });
+    });
+
+    vector.addEventListener("click", () => {
+      this.handleTrain();
+      const result = this.neuralNetwork.run(this.calculate());
+
+      this.setState({
+        result: { ...this.state.result, ...result }
+      });
     });
   }
 
+  componentDidUpdate(nextProps, nextState) {
+    if (nextState.trainData !== this.state.trainData) {
+      localStorage.setItem("trainData", JSON.stringify(this.state.trainData));
+    }
+  }
+
+  handleChoise = value => {
+    const vectorRes = this.calculate(true);
+
+    if (value === "sad") {
+      this.setState({
+        trainData: [
+          ...this.state.trainData,
+          { input: vectorRes, output: { negative: 1 } }
+        ]
+      });
+    } else if (value === "happy") {
+      this.setState({
+        trainData: [
+          ...this.state.trainData,
+          { input: vectorRes, output: { positive: 1 } }
+        ]
+      });
+    }
+
+    this.setState({ training: !this.state.training });
+    setTimeout(() => {
+      this.clear();
+    }, 500);
+  };
+
+  handleChange = event => {
+    const value = event.target.value;
+    this.setState(prevState => ({
+      neuralConfig: {
+        ...prevState.neuralConfig,
+        learningRate: parseFloat(value)
+      }
+    }));
+  };
+
+  handleSelect = event => {
+    const value = event.target.value;
+    this.setState(prevState => ({
+      neuralConfig: {
+        ...prevState.neuralConfig,
+        activation: value
+      }
+    }));
+  };
+
+  handleTrain = () => {
+    this.neuralNetwork.train(this.state.trainData);
+    localStorage.setItem(
+      "neuralNetwork",
+      JSON.stringify(this.neuralNetwork.toJSON())
+    );
+  };
+
+  handleLoopTrain = () => {
+    for (let i = 0; i <= 50; i++) {
+      this.handleTrain();
+      i === 50 && this.clear();
+    }
+  };
+
   drawLine(x1, y1, x2, y2, color = "gray") {
-    const canv = this.refs.canv;
-    const ctx = canv.getContext("2d");
+    const canvas = this.refs.canvas;
+    const ctx = canvas.getContext("2d");
 
     ctx.beginPath();
     ctx.strokeStyle = color;
@@ -95,8 +184,8 @@ class ExampleWithTeacher extends Component {
   }
 
   drawCell(x, y, w, h) {
-    const canv = this.refs.canv;
-    const ctx = canv.getContext("2d");
+    const canvas = this.refs.canvas;
+    const ctx = canvas.getContext("2d");
 
     ctx.fillStyle = "blue";
     ctx.strokeStyle = "blue";
@@ -107,18 +196,25 @@ class ExampleWithTeacher extends Component {
   }
 
   clear() {
-    const canv = this.refs.canv;
-    const ctx = canv.getContext("2d");
+    const canvas = this.refs.canvas;
+    const ctx = canvas.getContext("2d");
 
-    ctx.clearRect(0, 0, canv.width, canv.height);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    this.setState({
+      result: {
+        negative: 0,
+        positive: 0
+      },
+      training: false
+    });
   }
 
   drawGrid() {
-    const canv = this.refs.canv;
+    const canvas = this.refs.canvas;
     const pixel = 20;
 
-    const w = canv.width;
-    const h = canv.height;
+    const w = canvas.width;
+    const h = canvas.height;
     const p = w / pixel;
 
     const xStep = w / p;
@@ -134,12 +230,12 @@ class ExampleWithTeacher extends Component {
   }
 
   calculate(draw = false) {
-    const canv = this.refs.canv;
-    const ctx = canv.getContext("2d");
+    const canvas = this.refs.canvas;
+    const ctx = canvas.getContext("2d");
     const pixel = 20;
 
-    const w = canv.width;
-    const h = canv.height;
+    const w = canvas.width;
+    const h = canvas.height;
     const p = w / pixel;
 
     const xStep = w / p;
@@ -187,22 +283,71 @@ class ExampleWithTeacher extends Component {
   }
 
   render() {
+    const { trainData, training, result } = this.state;
+
     return (
       <div>
         <h2>Пример нейронной сети, обучающейся учитилем</h2>
         <p>
           Давайте сделаем интерфейс, в котором мы можем нарисовать смайлик и
-          обучить нейронную сеть распознавать грустный это смайлик или веселый
-          :)
+          обучить нейронную сеть распознавать грустный это смайлик, веселый или
+          нейтральный :)
         </p>
-        <div>
-          <canvas ref="canv" id="canv">
+        <div className="exampleContent">
+          <canvas ref="canvas" className="exampleContent__canvas">
             Ваш браузер устарел, обновитесь.
           </canvas>
-          <div>
-            <button ref="clear">Clear</button>
-            <button ref="train">Train</button>
-            <button ref="vector">Vector</button>
+          <div className="exampleContent__data">
+            <div className="buttons">
+              <button ref="clear" disabled={training ? true : false}>
+                Очистить
+              </button>
+              <button ref="train">Тренировать</button>
+              <button ref="vector" disabled={trainData.length ? false : true}>
+                Оценить
+              </button>
+            </div>
+            {training && (
+              <div className="train-buttons">
+                <button onClick={e => this.handleChoise("sad")}>
+                  Грустный
+                </button>
+                <button onClick={e => this.handleChoise("happy")}>
+                  Веселый
+                </button>
+                <button onClick={this.handleLoopTrain}>
+                  Тренировать 50 раз
+                </button>
+              </div>
+            )}
+            <div className="results">
+              <p>Примеров - {trainData.length}</p>
+              <br />
+              <br />
+              <div className="config">
+                <input
+                  type="number"
+                  min="0.1"
+                  max="0.9"
+                  value={this.state.neuralConfig.learningRate}
+                  onChange={event => this.handleChange(event)}
+                />
+                <select onChange={event => this.handleSelect(event)}>
+                  <option value="sigmoid">Сигмоидная</option>
+                  <option value="tanh">Тангенс</option>
+                </select>
+              </div>
+              <p>
+                Грустный - {(result.negative * 100).toFixed(2)}%
+                {Math.max(...Object.values(result)) === result.negative &&
+                  result.negative > 0 && <span> --Верно</span>}
+              </p>
+              <p>
+                Веселый - {(result.positive * 100).toFixed(2)}%
+                {Math.max(...Object.values(result)) === result.positive &&
+                  result.positive > 0 && <span> --Верно</span>}
+              </p>
+            </div>
           </div>
         </div>
       </div>
