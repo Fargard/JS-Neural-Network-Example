@@ -7,7 +7,7 @@ class ExampleWithTeacher extends Component {
     super(props);
     this.state = {
       trainData: [],
-      training: false,
+      trained: false,
       result: {
         negative: 0,
         positive: 0
@@ -27,6 +27,7 @@ class ExampleWithTeacher extends Component {
     this.handleChoise = this.handleChoise.bind(this);
     this.handleChange = this.handleChange.bind(this);
     this.handleSelect = this.handleSelect.bind(this);
+    this.handleCount = this.handleCount.bind(this);
   }
 
   componentWillMount() {
@@ -34,22 +35,22 @@ class ExampleWithTeacher extends Component {
     if (localTrainData && localTrainData.length > 0) {
       this.setState({ trainData: JSON.parse(localTrainData) });
     } else {
-      localStorage.setItem("trainData", JSON.stringify(basicTrainData));
-      this.setState({ trainData: basicTrainData });
+      localStorage.setItem("trainData", JSON.stringify([]));
+      //this.setState({ trainData: basicTrainData });
     }
 
     const savedNeuralNetwork = localStorage.getItem("neuralNetwork");
     if (savedNeuralNetwork && savedNeuralNetwork.length > 0) {
       this.neuralNetwork.fromJSON(JSON.parse(savedNeuralNetwork));
+      this.setState({
+        trained: true
+      });
     }
   }
 
   componentDidMount() {
-    this.state.trainData.length && this.handleTrain();
-
     const canvas = this.refs.canvas;
     const clear = this.refs.clear;
-    const train = this.refs.train;
     const vector = this.refs.vector;
     const ctx = canvas.getContext("2d");
 
@@ -90,12 +91,7 @@ class ExampleWithTeacher extends Component {
       this.clear();
     });
 
-    train.addEventListener("click", () => {
-      this.setState({ training: !this.state.training });
-    });
-
     vector.addEventListener("click", () => {
-      this.handleTrain();
       const result = this.neuralNetwork.run(this.calculate());
 
       this.setState({
@@ -130,9 +126,6 @@ class ExampleWithTeacher extends Component {
     }
 
     this.setState({ training: !this.state.training });
-    setTimeout(() => {
-      this.clear();
-    }, 500);
   };
 
   handleChange = event => {
@@ -156,7 +149,11 @@ class ExampleWithTeacher extends Component {
   };
 
   handleTrain = () => {
-    this.neuralNetwork.train(this.state.trainData);
+    const trainRes = this.neuralNetwork.train(this.state.trainData);
+    trainRes &&
+      this.setState({
+        trained: true
+      });
     localStorage.setItem(
       "neuralNetwork",
       JSON.stringify(this.neuralNetwork.toJSON())
@@ -168,6 +165,24 @@ class ExampleWithTeacher extends Component {
       this.handleTrain();
       i === 50 && this.clear();
     }
+  };
+
+  handleCount = arr => {
+    let countNeg = 0;
+    let countPos = 0;
+    arr.forEach(el => {
+      if (el.output.hasOwnProperty("negative")) {
+        countNeg++;
+      }
+      if (el.output.hasOwnProperty("positive")) {
+        countPos++;
+      }
+    });
+
+    return {
+      neg: countNeg,
+      pos: countPos
+    };
   };
 
   drawLine(x1, y1, x2, y2, color = "gray") {
@@ -283,7 +298,8 @@ class ExampleWithTeacher extends Component {
   }
 
   render() {
-    const { trainData, training, result } = this.state;
+    const { trainData, trained, result } = this.state;
+    const countPosNeg = this.handleCount(trainData);
 
     return (
       <div>
@@ -299,29 +315,29 @@ class ExampleWithTeacher extends Component {
           </canvas>
           <div className="exampleContent__data">
             <div className="buttons">
-              <button ref="clear" disabled={training ? true : false}>
-                Очистить
+              <button ref="clear">Очистить</button>
+              <button onClick={e => this.handleChoise("sad")}>
+                Запомнить Грустный
               </button>
-              <button ref="train">Тренировать</button>
-              <button ref="vector" disabled={trainData.length ? false : true}>
+              <button onClick={e => this.handleChoise("happy")}>
+                Запомнить Веселый
+              </button>
+              <button
+                disabled={trainData.length ? false : true}
+                onClick={this.handleTrain}
+              >
+                Тренировать
+              </button>
+              {/*<button onClick={this.handleLoopTrain}>Тренировать 50 раз</button>*/}
+              <button ref="vector" disabled={trained ? false : true}>
                 Оценить
               </button>
             </div>
-            {training && (
-              <div className="train-buttons">
-                <button onClick={e => this.handleChoise("sad")}>
-                  Грустный
-                </button>
-                <button onClick={e => this.handleChoise("happy")}>
-                  Веселый
-                </button>
-                <button onClick={this.handleLoopTrain}>
-                  Тренировать 50 раз
-                </button>
-              </div>
-            )}
             <div className="results">
-              <p>Примеров - {trainData.length}</p>
+              <p>
+                Примеров - {trainData.length} ({countPosNeg.pos} -
+                положительных, {countPosNeg.neg} - отрицательных)
+              </p>
               <br />
               <br />
               <div className="config">
