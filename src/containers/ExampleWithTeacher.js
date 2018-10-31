@@ -15,8 +15,8 @@ class ExampleWithTeacher extends Component {
       neuralConfig: {
         binaryThresh: 0.5,
         activation: "sigmoid",
-        hiddenLayers: [5],
-        learningRate: 0.3
+        hiddenLayers: [156, 39, 9],
+        learningRate: 0.4
       }
     };
 
